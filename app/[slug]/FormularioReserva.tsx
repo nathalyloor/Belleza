@@ -49,19 +49,24 @@ export default function FormularioReserva({ servicios, perfilId, telefonoNegocio
       return;
     }
 
-    // 2. Armar el mensaje para WhatsApp
-    const mensaje = `¡Hola! Me gustaría confirmar una cita:%0A%0A` +
-      `💅 *Servicio:* ${servicioSeleccionado.nombre}%0A` +
-      `👤 *Nombre:* ${nombre}%0A` +
-      `📅 *Fecha:* ${fecha}%0A` +
-      `⏰ *Hora:* ${hora}%0A` +
+    // 2. Armar el mensaje para WhatsApp con codificación de texto
+    const mensaje = `¡Hola! Me gustaría confirmar una cita:\n\n` +
+      `💅 *Servicio:* ${servicioSeleccionado.nombre}\n` +
+      `👤 *Nombre:* ${nombre}\n` +
+      `📅 *Fecha:* ${fecha}\n` +
+      `⏰ *Hora:* ${hora}\n` +
       `💰 *Total:* $${servicioSeleccionado.precio}`;
 
     // 3. Redirigir directamente a WhatsApp
-    const urlWhatsApp = `https://wa.me/${telefonoNegocio.replace('+', '')}?text=${mensaje}`;
+    const numLimpio = telefonoNegocio.replace(/[^0-9]/g, '');
+    const urlWhatsApp = `https://wa.me/${numLimpio}?text=${encodeURIComponent(mensaje)}`;
     window.open(urlWhatsApp, '_blank');
 
     setServicioSeleccionado(null);
+    setNombre('');
+    setTelefono('');
+    setFecha('');
+    setHora('');
   };
 
   return (
@@ -69,16 +74,20 @@ export default function FormularioReserva({ servicios, perfilId, telefonoNegocio
       {/* Lista de Servicios */}
       <div className="space-y-3">
         {servicios.map((s) => (
-          <div key={s.id} className="bg-white p-4 rounded-xl border border-pink-100 shadow-sm flex justify-between items-center">
-            <div>
-              <p className="font-medium text-gray-800">{s.nombre}</p>
+          <div 
+            key={s.id} 
+            className="bg-white p-4 rounded-xl border border-pink-100 shadow-sm flex items-center justify-between gap-3"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-gray-800 text-sm sm:text-base truncate">{s.nombre}</p>
               <p className="text-xs text-gray-400">{s.duracion_minutos} minutos</p>
             </div>
-            <div className="text-right flex items-center gap-3">
-              <p className="font-bold text-pink-600 text-lg">${s.precio}</p>
+            
+            <div className="flex items-center gap-3 shrink-0">
+              <p className="font-bold text-pink-600 text-base sm:text-lg">${s.precio}</p>
               <button
                 onClick={() => setServicioSeleccionado(s)}
-                className="text-xs bg-pink-500 text-white px-3 py-2 rounded-lg hover:bg-pink-600 font-medium transition-colors"
+                className="text-xs bg-pink-500 text-white px-3.5 py-2 rounded-lg hover:bg-pink-600 font-semibold transition-colors whitespace-nowrap"
               >
                 Reservar
               </button>
