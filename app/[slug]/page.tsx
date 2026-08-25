@@ -2,6 +2,9 @@ import { supabase } from '@/lib/superbase';
 import { notFound } from 'next/navigation';
 import FormularioReserva from './FormularioReserva';
 
+// Desactiva el almacenamiento en caché para que los servicios actualizados se reflejen de inmediato
+export const revalidate = 0;
+
 interface Props {
   params: Promise<{ slug: string }>;
 }
@@ -9,7 +12,7 @@ interface Props {
 export default async function PaginaPerfil({ params }: Props) {
   const { slug } = await params;
 
-  // Obtener perfil de la manicurista
+  // 1. Obtener perfil del negocio por slug
   const { data: perfil } = await supabase
     .from('perfiles')
     .select('*')
@@ -18,11 +21,13 @@ export default async function PaginaPerfil({ params }: Props) {
 
   if (!perfil) return notFound();
 
-  // Obtener catálogo de servicios
+  // 2. Obtener catálogo de servicios activos ordenados por creación
   const { data: servicios } = await supabase
     .from('servicios')
     .select('*')
-    .eq('perfil_id', perfil.id);
+    .eq('perfil_id', perfil.id)
+    .eq('activo', true)
+    .order('created_at', { ascending: true });
 
   return (
     <main className="min-h-screen bg-pink-50/30 p-4 max-w-md mx-auto">

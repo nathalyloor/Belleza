@@ -11,12 +11,14 @@ interface Servicio {
   precio: number;
   categoria: string;
   activo: boolean;
+  perfil_id?: string;
 }
 
 export default function GestionServiciosPage() {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [cargando, setCargando] = useState(true);
-  
+  const [perfilId, setPerfilId] = useState<string | null>(null);
+
   // Formulario
   const [nombre, setNombre] = useState('');
   const [precio, setPrecio] = useState('');
@@ -24,15 +26,36 @@ export default function GestionServiciosPage() {
   const [categoria, setCategoria] = useState('Manicure');
   const [guardando, setGuardando] = useState(false);
 
+  // Obtener perfil autenticado y cargar sus servicios
   const cargarServicios = async () => {
     setCargando(true);
-    const { data, error } = await supabase
-      .from('servicios')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data: { session } } = await supabase.auth.getSession();
 
-    if (!error && data) {
-      setServicios(data);
+    if (!session) {
+      setCargando(false);
+      return;
+    }
+
+    // Obtener el ID del perfil que corresponde al usuario autenticado
+    const { data: perfil } = await supabase
+      .from('perfiles')
+      .select('id')
+      .eq('usuario_id', session.user.id)
+      .single();
+
+    if (perfil) {
+      setPerfilId(perfil.id);
+
+      // Cargar solo los servicios vinculados a este perfil
+      const { data, error } = await supabase
+        .from('servicios')
+        .select('*')
+        .eq('perfil_id', perfil.id)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setServicios(data);
+      }
     }
     setCargando(false);
   };
@@ -43,7 +66,10 @@ export default function GestionServiciosPage() {
 
   const agregarServicio = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombre || !precio) return;
+    if (!nombre || !precio || !perfilId) {
+      alert('Asegúrate de estar autenticado para guardar servicios.');
+      return;
+    }
 
     setGuardando(true);
     const { error } = await supabase.from('servicios').insert([
@@ -53,6 +79,7 @@ export default function GestionServiciosPage() {
         duracion_minutos: parseInt(duracion),
         categoria,
         activo: true,
+        perfil_id: perfilId, // Se vincula al perfil del usuario actual
       },
     ]);
 
@@ -96,7 +123,7 @@ export default function GestionServiciosPage() {
         </div>
         <Link
           href="/admin"
-          className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg font-medium text-gray-700"
+          className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg font-medium text-gray-700 transition-colors"
         >
           ⬅️ Volver a Citas
         </Link>
@@ -159,8 +186,8 @@ export default function GestionServiciosPage() {
           <div className="sm:col-span-2 lg:col-span-3 flex items-end">
             <button
               type="submit"
-              disabled={guardando}
-              className="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 rounded-lg text-xs font-bold transition-colors shadow-sm"
+              disabled={guardando || !perfilId}
+              className="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 rounded-lg text-xs font-bold transition-colors shadow-sm disabled:opacity-50"
             >
               {guardando ? 'Guardando...' : '+ Guardar Servicio'}
             </button>
@@ -198,7 +225,7 @@ export default function GestionServiciosPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => cambiarEstado(s.id, s.activo)}
-                  className={`text-xs px-2.5 py-1 rounded-lg font-medium ${
+                  className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
                     s.activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                   }`}
                 >
@@ -206,7 +233,7 @@ export default function GestionServiciosPage() {
                 </button>
                 <button
                   onClick={() => eliminarServicio(s.id)}
-                  className="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-2.5 py-1 rounded-lg font-medium"
+                  className="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-2.5 py-1 rounded-lg font-medium transition-colors"
                 >
                   🗑️
                 </button>
