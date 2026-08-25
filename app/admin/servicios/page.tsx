@@ -36,26 +36,30 @@ export default function GestionServiciosPage() {
       return;
     }
 
-    // Obtener el ID del perfil que corresponde al usuario autenticado
+    let idFinalPerfil = session.user.id;
+
+    // Buscar el id en la tabla perfiles probando 'usuario_id' o 'user_id'
     const { data: perfil } = await supabase
       .from('perfiles')
       .select('id')
-      .eq('usuario_id', session.user.id)
-      .single();
+      .or(`usuario_id.eq.${session.user.id},user_id.eq.${session.user.id}`)
+      .maybeSingle();
 
     if (perfil) {
-      setPerfilId(perfil.id);
+      idFinalPerfil = perfil.id;
+    }
 
-      // Cargar solo los servicios vinculados a este perfil
-      const { data, error } = await supabase
-        .from('servicios')
-        .select('*')
-        .eq('perfil_id', perfil.id)
-        .order('created_at', { ascending: false });
+    setPerfilId(idFinalPerfil);
 
-      if (!error && data) {
-        setServicios(data);
-      }
+    // Cargar solo los servicios vinculados a este perfil
+    const { data, error } = await supabase
+      .from('servicios')
+      .select('*')
+      .eq('perfil_id', idFinalPerfil)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setServicios(data);
     }
     setCargando(false);
   };
@@ -66,12 +70,17 @@ export default function GestionServiciosPage() {
 
   const agregarServicio = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombre || !precio || !perfilId) {
-      alert('Asegúrate de estar autenticado para guardar servicios.');
+    setGuardando(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const idAInsertar = perfilId || session?.user?.id;
+
+    if (!idAInsertar) {
+      alert('Debes estar autenticado para guardar servicios.');
+      setGuardando(false);
       return;
     }
 
-    setGuardando(true);
     const { error } = await supabase.from('servicios').insert([
       {
         nombre,
@@ -79,7 +88,7 @@ export default function GestionServiciosPage() {
         duracion_minutos: parseInt(duracion),
         categoria,
         activo: true,
-        perfil_id: perfilId, // Se vincula al perfil del usuario actual
+        perfil_id: idAInsertar,
       },
     ]);
 
@@ -186,8 +195,8 @@ export default function GestionServiciosPage() {
           <div className="sm:col-span-2 lg:col-span-3 flex items-end">
             <button
               type="submit"
-              disabled={guardando || !perfilId}
-              className="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 rounded-lg text-xs font-bold transition-colors shadow-sm disabled:opacity-50"
+              disabled={guardando}
+              className="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 rounded-lg text-xs font-bold transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
             >
               {guardando ? 'Guardando...' : '+ Guardar Servicio'}
             </button>
@@ -201,7 +210,7 @@ export default function GestionServiciosPage() {
         {cargando ? (
           <p className="text-xs text-gray-500 text-center py-6">Cargando servicios...</p>
         ) : servicios.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-6 bg-white rounded-xl border">
+          <p className="text-xs text-gray-400 text-center py-6 bg-white rounded-xl border border-gray-100">
             No tienes servicios registrados.
           </p>
         ) : (
