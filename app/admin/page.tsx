@@ -82,17 +82,23 @@ export default function AdminPage() {
             href="/admin/servicios"
             className="text-xs bg-pink-500 hover:bg-pink-600 text-white px-3 py-2 rounded-lg font-medium transition-colors shadow-sm"
           >
-            💅 Gestionar Servicios
+            💅 Servicios
+          </Link>
+          <Link
+            href="/admin/horarios"
+            className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg font-medium transition-colors shadow-sm"
+          >
+            🗓️ Horarios
           </Link>
           <button
             onClick={verificarSesionYObtenerCitas}
-            className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg font-medium transition-colors"
+            className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg font-medium transition-colors cursor-pointer"
           >
             🔄 Actualizar
           </button>
           <button
             onClick={cerrarSesion}
-            className="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg font-medium transition-colors"
+            className="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg font-medium transition-colors cursor-pointer"
           >
             🚪 Cerrar Sesión
           </button>
@@ -163,7 +169,7 @@ export default function AdminPage() {
                   {cita.estado !== 'confirmada' && (
                     <button
                       onClick={() => actualizarEstado(cita.id, 'confirmada')}
-                      className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+                      className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
                     >
                       Confirmar
                     </button>
@@ -171,7 +177,7 @@ export default function AdminPage() {
                   {cita.estado !== 'cancelada' && (
                     <button
                       onClick={() => actualizarEstado(cita.id, 'cancelada')}
-                      className="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors"
+                      className="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
                     >
                       Cancelar
                     </button>
