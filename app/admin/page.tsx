@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/superbase';
+import { useRouter } from 'next/navigation';
 
 interface Cita {
   id: string;
@@ -9,15 +10,28 @@ interface Cita {
   cliente_telefono: string;
   fecha_hora: string;
   estado: 'pendiente' | 'confirmada' | 'cancelada';
+  perfil_id?: string;
 }
 
 export default function AdminPage() {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [usuarioEmail, setUsuarioEmail] = useState<string | null>(null);
+  const router = useRouter();
 
-  // Cargar citas desde Supabase
-  const obtenerCitas = async () => {
+  // 1. Verificar sesión activa y obtener citas del usuario
+  const verificarSesionYObtenerCitas = async () => {
     setCargando(true);
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      router.push('/login');
+      return;
+    }
+
+    setUsuarioEmail(session.user.email ?? null);
+
+    // Consulta filtrada por usuario autenticado para SaaS multi-tenant
     const { data, error } = await supabase
       .from('citas')
       .select('*')
@@ -30,10 +44,10 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    obtenerCitas();
+    verificarSesionYObtenerCitas();
   }, []);
 
-  // Cambiar estado de la cita
+  // 2. Cambiar estado de la cita
   const actualizarEstado = async (id: string, nuevoEstado: string) => {
     const { error } = await supabase
       .from('citas')
@@ -47,19 +61,35 @@ export default function AdminPage() {
     }
   };
 
+  // 3. Cerrar Sesión
+  const cerrarSesion = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 p-4 max-w-4xl mx-auto">
-      <header className="flex justify-between items-center mb-6 pt-4 border-b pb-4">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pt-4 border-b pb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Panel de Administración</h1>
-          <p className="text-xs text-gray-500">Gestión de citas agendadas</p>
+          <p className="text-xs text-gray-500">
+            Gestión de citas agendadas {usuarioEmail && `• ${usuarioEmail}`}
+          </p>
         </div>
-        <button
-          onClick={obtenerCitas}
-          className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg font-medium transition-colors"
-        >
-          🔄 Actualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={verificarSesionYObtenerCitas}
+            className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg font-medium transition-colors"
+          >
+            🔄 Actualizar
+          </button>
+          <button
+            onClick={cerrarSesion}
+            className="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg font-medium transition-colors"
+          >
+            🚪 Cerrar Sesión
+          </button>
+        </div>
       </header>
 
       {cargando ? (
@@ -82,6 +112,10 @@ export default function AdminPage() {
               minute: '2-digit',
             });
 
+            // Dar formato internacional a WhatsApp
+            const numLimpio = cita.cliente_telefono.replace(/[^0-9]/g, '');
+            const urlWhatsapp = `https://wa.me/${numLimpio.startsWith('0') ? '593' + numLimpio.slice(1) : numLimpio}`;
+
             return (
               <div
                 key={cita.id}
@@ -103,7 +137,15 @@ export default function AdminPage() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-500">
-                    📞 <a href={`https://wa.me/${cita.cliente_telefono.replace(/[^0-9]/g, '')}`} target="_blank" className="underline font-medium text-pink-600">{cita.cliente_telefono}</a>
+                    📞{' '}
+                    <a
+                      href={urlWhatsapp}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-medium text-pink-600 hover:text-pink-700"
+                    >
+                      {cita.cliente_telefono} (Contactar)
+                    </a>
                   </p>
                   <p className="text-xs text-gray-600 font-medium">
                     📅 {fechaFormateada} - ⏰ {horaFormateada}
