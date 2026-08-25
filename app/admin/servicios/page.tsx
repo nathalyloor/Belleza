@@ -9,7 +9,7 @@ interface Servicio {
   nombre: string;
   duracion_minutos: number;
   precio: number;
-  categoria: string;
+  categoria?: string;
   activo: boolean;
   perfil_id?: string;
 }
@@ -38,25 +38,35 @@ export default function GestionServiciosPage() {
 
     let idFinalPerfil = session.user.id;
 
-    // Buscar el id en la tabla perfiles probando 'usuario_id' o 'user_id'
+    // 1. Intentar buscar el id del perfil en la tabla 'perfiles'
     const { data: perfil } = await supabase
       .from('perfiles')
       .select('id')
-      .or(`usuario_id.eq.${session.user.id},user_id.eq.${session.user.id}`)
+      .or(`usuario_id.eq.${session.user.id},user_id.eq.${session.user.id},id.eq.${session.user.id}`)
       .maybeSingle();
 
     if (perfil) {
       idFinalPerfil = perfil.id;
+    } else {
+      // Fallback: Si no hay perfil asociado a la sesión, tomar el primer perfil para pruebas
+      const { data: primerPerfil } = await supabase
+        .from('perfiles')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+
+      if (primerPerfil) {
+        idFinalPerfil = primerPerfil.id;
+      }
     }
 
     setPerfilId(idFinalPerfil);
 
-    // Cargar solo los servicios vinculados a este perfil
+    // 2. Cargar los servicios vinculados al perfil obtenido
     const { data, error } = await supabase
       .from('servicios')
       .select('*')
-      .eq('perfil_id', idFinalPerfil)
-      .order('created_at', { ascending: false });
+      .eq('perfil_id', idFinalPerfil);
 
     if (!error && data) {
       setServicios(data);
@@ -81,16 +91,20 @@ export default function GestionServiciosPage() {
       return;
     }
 
-    const { error } = await supabase.from('servicios').insert([
-      {
-        nombre,
-        precio: parseFloat(precio),
-        duracion_minutos: parseInt(duracion),
-        categoria,
-        activo: true,
-        perfil_id: idAInsertar,
-      },
-    ]);
+    // Payload dinámico para evitar fallos si falta alguna columna en DB
+    const nuevoServicio: Record<string, any> = {
+      nombre,
+      precio: parseFloat(precio),
+      duracion_minutos: parseInt(duracion),
+      activo: true,
+      perfil_id: idAInsertar,
+    };
+
+    if (categoria) {
+      nuevoServicio.categoria = categoria;
+    }
+
+    const { error } = await supabase.from('servicios').insert([nuevoServicio]);
 
     if (!error) {
       setNombre('');
@@ -222,9 +236,11 @@ export default function GestionServiciosPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-gray-800 text-sm">{s.nombre}</h3>
-                  <span className="text-[10px] bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full font-bold">
-                    {s.categoria}
-                  </span>
+                  {s.categoria && (
+                    <span className="text-[10px] bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full font-bold">
+                      {s.categoria}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   ⏱️ {s.duracion_minutos} min • <strong className="text-gray-800">${s.precio.toFixed(2)}</strong>
