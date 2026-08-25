@@ -14,7 +14,7 @@ export default async function PageCliente({ params }: Props) {
   // 1. Buscar perfil por slug (usando ilike para ignorar mayúsculas/minúsculas)
   let { data: perfil } = await supabase
     .from('perfiles')
-    .select('*')
+    .select('id, slug, nombre_negocio, telefono, usuario_id, user_id')
     .ilike('slug', slug)
     .maybeSingle();
 
@@ -22,7 +22,7 @@ export default async function PageCliente({ params }: Props) {
   if (!perfil) {
     const { data: primerPerfil } = await supabase
       .from('perfiles')
-      .select('*')
+      .select('id, slug, nombre_negocio, telefono, usuario_id, user_id')
       .limit(1)
       .maybeSingle();
     perfil = primerPerfil;
@@ -40,15 +40,25 @@ export default async function PageCliente({ params }: Props) {
   }
 
   // 2. Obtener servicios vinculados al perfil encontrado
-  const { data: servicios } = await supabase
-    .from('servicios')
-    .select('id, nombre, precio, duracion_minutos, activo')
-    .eq('perfil_id', perfil.id);
+  // Algunas instalaciones guardan servicios con el perfil_id real, otras con el id del usuario asociado.
+  const perfilesRelacionados = [perfil.id, perfil.usuario_id, perfil.user_id]
+    .filter(Boolean)
+    .map(String);
 
-  // Filtrar servicios activos o sin campo activo definido
-  const serviciosVisibles = (servicios || []).filter(
-    (s) => s.activo === true || s.activo === null || s.activo === undefined
-  );
+  const filtrosServicios = perfilesRelacionados
+    .map((id) => `perfil_id.eq.${id}`)
+    .join(',');
+
+  const { data: servicios } = filtrosServicios
+    ? await supabase
+        .from('servicios')
+        .select('id, nombre, precio, duracion_minutos, activo')
+        .or(filtrosServicios)
+        .order('created_at', { ascending: false })
+    : { data: [] };
+
+  // Mostrar servicios activos, y también los que no tienen estado definido para compatibilidad con datos antiguos
+  const serviciosVisibles = (servicios || []).filter((s) => s.activo !== false);
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
