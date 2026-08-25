@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/superbase';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Cita {
   id: string;
@@ -76,7 +77,13 @@ export default function AdminPage() {
             Gestión de citas agendadas {usuarioEmail && `• ${usuarioEmail}`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/servicios"
+            className="text-xs bg-pink-500 hover:bg-pink-600 text-white px-3 py-2 rounded-lg font-medium transition-colors shadow-sm"
+          >
+            💅 Gestionar Servicios
+          </Link>
           <button
             onClick={verificarSesionYObtenerCitas}
             className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg font-medium transition-colors"
