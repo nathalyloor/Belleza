@@ -92,17 +92,22 @@ export default function GestionHorariosPage() {
     if (!perfilId) return;
     setGuardando(true);
 
-    const datosAGuardar = horarios.map((h) => ({
-      perfil_id: perfilId,
-      dia_semana: h.dia_semana,
-      hora_inicio: h.hora_inicio,
-      hora_fin: h.hora_fin,
-      activo: h.activo,
-    }));
+    // Mapeamos los datos incluyendo el id si ya existe para asegurar el update/insert correcto
+    const datosAGuardar = horarios.map((h) => {
+      const base: Record<string, any> = {
+        perfil_id: perfilId,
+        dia_semana: h.dia_semana,
+        hora_inicio: h.hora_inicio,
+        hora_fin: h.hora_fin,
+        activo: h.activo,
+      };
+      if (h.id) base.id = h.id;
+      return base;
+    });
 
     const { error } = await supabase
       .from('horarios_atencion')
-      .upsert(datosAGuardar, { onConflict: 'perfil_id,dia_semana' });
+      .upsert(datosAGuardar);
 
     if (!error) {
       alert('¡Horarios guardados con éxito!');
