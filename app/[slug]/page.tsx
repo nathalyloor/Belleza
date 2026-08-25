@@ -9,14 +9,13 @@ export default async function PageCliente({ params }: Props) {
   const resolvedParams = await params;
   const slug = resolvedParams.slug;
 
-  // 1. Intentar obtener el perfil coincidente por slug
+  // 1. Obtener el perfil por slug o tomar el primero disponible
   let { data: perfil } = await supabase
     .from('perfiles')
     .select('*')
     .ilike('slug', slug)
     .maybeSingle();
 
-  // 2. Si no hay perfil por slug, tomamos el primer registro existente como fallback
   if (!perfil) {
     const { data: primerPerfil } = await supabase
       .from('perfiles')
@@ -26,19 +25,18 @@ export default async function PageCliente({ params }: Props) {
     perfil = primerPerfil;
   }
 
-  // ID hardcodizado del perfil que vimos en tu tabla de Supabase como resguardo definitivo
-  const idPerfilValido = perfil?.id || '45f03e26-9012-47b7-9c63-625091216a69';
+  const perfilIdUsar = perfil?.id || '45f03e26-9012-47b7-9c63-625091216a69';
 
-  // 3. Consultar los servicios vinculados
+  // 2. Traer los servicios vinculados al perfil
   const { data: servicios } = await supabase
     .from('servicios')
     .select('id, nombre, precio, duracion_minutos, activo')
-    .or(`perfil_id.eq.${idPerfilValido},perfil_id.is.null`);
+    .eq('perfil_id', perfilIdUsar);
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
       <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mt-4">
-        {/* Encabezado del Perfil */}
+        {/* Encabezado */}
         <div className="flex flex-col items-center text-center mb-6">
           <div className="w-20 h-20 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center font-bold text-2xl mb-3 shadow-inner">
             {perfil?.nombre_negocio ? perfil.nombre_negocio.charAt(0).toUpperCase() : 'J'}
@@ -54,7 +52,7 @@ export default async function PageCliente({ params }: Props) {
         {/* Formulario de Reserva */}
         <FormularioReserva
           servicios={servicios || []}
-          perfilId={idPerfilValido}
+          perfilId={perfilIdUsar}
           telefonoNegocio={perfil?.telefono || ''}
         />
       </div>
